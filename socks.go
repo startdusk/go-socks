@@ -1,6 +1,8 @@
 package socks
 
 import (
+	"errors"
+	"io"
 	"log"
 	"net"
 )
@@ -29,6 +31,7 @@ func (s *Server) Run() error {
 		}
 
 		go func() {
+			defer conn.Close()
 			err := handleConn(conn)
 			if err != nil {
 				log.Printf("handle connection failure from [%s]: %+v", conn.RemoteAddr(), err)
@@ -39,9 +42,27 @@ func (s *Server) Run() error {
 
 func handleConn(conn net.Conn) error {
 	// 协商过程
+	if err := auth(conn); err != nil {
+		return err
+	}
 
 	// 请求过程
 
 	// 转发过程
 	return nil
+}
+
+func auth(conn io.ReadWriter) error {
+	msg, err := NewClientAuthMsg(conn)
+	if err != nil {
+		return err
+	}
+
+	// Only support no-auth
+	if !msg.ContainsMethod(MethodNoAuth) {
+		NewServerAuthMsg(conn, MethodNoAcceptable)
+		return errors.New("method not supported")
+	}
+
+	return NewServerAuthMsg(conn, MethodNoAuth)
 }
