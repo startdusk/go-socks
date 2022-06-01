@@ -71,3 +71,11 @@ func TestAuth(t *testing.T) {
 		})
 	}
 }
+
+func FuzzAuth(f *testing.F) {
+	f.Add([]byte{})
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		auth(bytes.NewBuffer(data))
+	})
+}

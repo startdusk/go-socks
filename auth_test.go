@@ -78,3 +78,19 @@ func TestNewServerAuthMsg(t *testing.T) {
 		})
 	}
 }
+
+func FuzzNewClientAuthMsg(f *testing.F) {
+	f.Add([]byte{})
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		NewClientAuthMsg(bytes.NewReader(data))
+	})
+}
+
+func FuzzNewServerAuthMsg(f *testing.F) {
+	f.Add([]byte{}, byte(0))
+
+	f.Fuzz(func(t *testing.T, buf []byte, method byte) {
+		NewServerAuthMsg(bytes.NewBuffer(buf), method)
+	})
+}
