@@ -10,6 +10,7 @@ test: vet
 	@go test ./...
 
 fuzz: vet
+	@go test -fuzz=FuzzNewClientRequestMsg -fuzztime 30s
 	@go test -fuzz=FuzzNewClientAuthMsg -fuzztime 30s
 	@go test -fuzz=FuzzNewServerAuthMsg -fuzztime 30s
 	@go test -fuzz=FuzzAuth -fuzztime 30s

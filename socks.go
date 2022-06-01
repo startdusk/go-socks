@@ -7,6 +7,11 @@ import (
 	"net"
 )
 
+const (
+	SOCKS5Version = 0x05
+	ReservedField = 0x00
+)
+
 type Socks interface {
 	Run() error
 }
@@ -47,6 +52,10 @@ func handleConn(conn net.Conn) error {
 	}
 
 	// 请求过程
+	_, err := request(conn)
+	if err != nil {
+		return err
+	}
 
 	// 转发过程
 	return nil
@@ -65,4 +74,8 @@ func auth(conn io.ReadWriter) error {
 	}
 
 	return NewServerAuthMsg(conn, MethodNoAuth)
+}
+
+func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
+	return nil, nil
 }

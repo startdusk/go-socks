@@ -1,7 +1,6 @@
 package socks
 
 import (
-	"errors"
 	"io"
 )
 
@@ -15,7 +14,7 @@ func NewClientAuthMsg(conn io.Reader) (*ClientAuthMsg, error) {
 
 	// Validate version
 	if buf[0] != SOCKS5Version {
-		return nil, errors.New("protocol version not supported")
+		return nil, ErrVersionNotSupported
 	}
 
 	// Read Methods
@@ -37,10 +36,6 @@ func NewServerAuthMsg(conn io.Writer, method Method) error {
 	_, err := conn.Write(buf)
 	return err
 }
-
-const (
-	SOCKS5Version = 0x05
-)
 
 type ClientAuthMsg struct {
 	Version  byte

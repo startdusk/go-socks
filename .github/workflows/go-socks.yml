@@ -28,6 +28,9 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
+    - name: Vet
+      run: go vet -v .
+      
     - name: Build
       run: go build -v .
 
@@ -39,6 +42,7 @@ jobs:
         go test -fuzz=FuzzNewClientAuthMsg -fuzztime 30s 
         go test -fuzz=FuzzNewServerAuthMsg -fuzztime 30s
         go test -fuzz=FuzzAuth -fuzztime 30s
-    
+        go test -fuzz=FuzzNewClientRequestMsg -fuzztime 30s
+        
     - name: Test Race
       run:  go test -race -cpu 1,4 -timeout 7m ./...
