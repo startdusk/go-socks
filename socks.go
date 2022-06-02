@@ -77,5 +77,21 @@ func auth(conn io.ReadWriter) error {
 }
 
 func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
+	msg, err := NewClientRequestMsg(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the command is supported
+	if msg.Command != CmdConnect {
+		// no supported
+		return nil, ErrCommandNotSupported
+	}
+
+	// Check if the address type if supported
+	if msg.AddrType == IPv6Addr {
+		return nil, ErrAddrTypeNotSupported
+	}
+
 	return nil, nil
 }

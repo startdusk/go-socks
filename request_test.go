@@ -2,6 +2,7 @@ package socks
 
 import (
 	"bytes"
+	"net"
 	"testing"
 )
 
@@ -27,9 +28,10 @@ func TestNewClientRequestMsg(t *testing.T) {
 			addr:     []byte{192, 168, 168, 201},
 			port:     []byte{0x00, 0x80},
 			expectMsg: ClientRequestMsg{
-				Command: CmdBind,
-				Address: "192.168.168.201",
-				Port:    0x80,
+				Command:  CmdBind,
+				AddrType: IPv4Addr,
+				Address:  "192.168.168.201",
+				Port:     0x80,
 			},
 			wantErr: false,
 		},
@@ -121,7 +123,9 @@ func TestNewClientRequestMsg(t *testing.T) {
 			if msg.Command != c.expectMsg.Command {
 				t.Fatalf("expected command %v but got %v", c.expectMsg.Command, msg.Command)
 			}
-
+			if msg.AddrType != c.expectMsg.AddrType {
+				t.Fatalf("expected address type %v but got %v", c.expectMsg.AddrType, msg.AddrType)
+			}
 			if msg.Address != c.expectMsg.Address {
 				t.Fatalf("expected address %v but got %v", c.expectMsg.Address, msg.Address)
 			}
@@ -137,5 +141,13 @@ func FuzzNewClientRequestMsg(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		NewClientRequestMsg(bytes.NewReader(data))
+	})
+}
+
+func FuzzWriteReqSuccessMsg(f *testing.F) {
+	f.Add([]byte{}, uint16(0))
+	f.Fuzz(func(t *testing.T, ip []byte, port uint16) {
+		var buf bytes.Buffer
+		WriteReqSuccessMsg(&buf, net.IP(ip), port)
 	})
 }

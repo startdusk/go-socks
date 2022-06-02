@@ -6,9 +6,10 @@ import (
 )
 
 type ClientRequestMsg struct {
-	Command Command
-	Address string
-	Port    uint16
+	Command  Command
+	AddrType AddressType
+	Address  string
+	Port     uint16
 }
 
 type Command = byte
@@ -31,6 +32,20 @@ const (
 	IPv4Len = 4
 	IPv6Len = 6
 	PortLen = 2
+)
+
+type Reply = byte
+
+const (
+	ReplySucceeded Reply = iota
+	ReplyGeneralSOCKSServerFailure
+	ReplyConnectionNotAllowedByRuleset
+	ReplyNetworkUnreachable
+	ReplyHostUnreachablle
+	ReplyConnectionRefused
+	ReplyTTLExpired
+	ReplyCommandNotSupported
+	ReplyAddressTypeNotSupported
 )
 
 func NewClientRequestMsg(conn io.Reader) (*ClientRequestMsg, error) {
@@ -57,7 +72,8 @@ func NewClientRequestMsg(conn io.Reader) (*ClientRequestMsg, error) {
 	}
 
 	msg := ClientRequestMsg{
-		Command: command,
+		Command:  command,
+		AddrType: addrType,
 	}
 
 	// Read address
@@ -91,4 +107,29 @@ func NewClientRequestMsg(conn io.Reader) (*ClientRequestMsg, error) {
 	msg.Port = (uint16(buf[0]) << 8) + uint16(buf[1])
 
 	return &msg, nil
+}
+
+func WriteReqSuccessMsg(conn io.Writer, ip net.IP, port uint16) error {
+	addrType := IPv4Addr
+	if len(ip) == IPv6Len {
+		addrType = IPv6Addr
+	}
+	// Write version, reply success, reserved, address type
+	_, err := conn.Write([]byte{SOCKS5Version, ReplySucceeded, ReservedField, addrType})
+	if err != nil {
+		return err
+	}
+
+	// Write bind IP(IPv4/IPv6)
+	_, err = conn.Write(ip)
+	if err != nil {
+		return err
+	}
+
+	// Write bind port
+	buf := make([]byte, 2)
+	buf[0] = byte(port >> 8)
+	buf[1] = byte(port - uint16(buf[0]))
+	_, err = conn.Write(buf)
+	return err
 }
