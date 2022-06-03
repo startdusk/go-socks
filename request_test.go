@@ -3,6 +3,7 @@ package socks
 import (
 	"bytes"
 	"net"
+	"reflect"
 	"testing"
 )
 
@@ -131,6 +132,46 @@ func TestNewClientRequestMsg(t *testing.T) {
 			}
 			if msg.Port != c.expectMsg.Port {
 				t.Fatalf("expected port %v but got %v", c.expectMsg.Port, msg.Port)
+			}
+		})
+	}
+}
+
+func TestWriteReqSuccessMsg(t *testing.T) {
+	cases := []struct {
+		name      string
+		ip        net.IP
+		port      uint16
+		expectMsg []byte
+		wantErr   bool
+	}{
+		{
+			name:      "normal_success",
+			ip:        net.IP([]byte{123, 123, 11, 11}),
+			port:      1081,
+			expectMsg: []byte{SOCKS5Version, ReplySucceeded, ReservedField, IPv4Addr, 123, 123, 11, 11, 0x04, 0x39},
+			wantErr:   false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := WriteReqSuccessMsg(&buf, c.ip, c.port)
+			if c.wantErr && err == nil {
+				t.Fatalf("expected want error but got nil")
+			}
+			if !c.wantErr && err != nil {
+				t.Fatalf("expected want nil but got error: %+v", err)
+			}
+
+			if c.wantErr {
+				return
+			}
+
+			got := buf.Bytes()
+			if !reflect.DeepEqual(c.expectMsg, got) {
+				t.Fatalf("expected message %v but got %v", c.expectMsg, got)
 			}
 		})
 	}

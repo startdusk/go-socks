@@ -2,6 +2,7 @@ package socks
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -46,19 +47,19 @@ func (s *Server) Run() error {
 }
 
 func handleConn(conn net.Conn) error {
-	// 协商过程
+	// auth
 	if err := auth(conn); err != nil {
 		return err
 	}
 
-	// 请求过程
-	_, err := request(conn)
+	// request
+	target, err := request(conn)
 	if err != nil {
 		return err
 	}
 
-	// 转发过程
-	return nil
+	// forward
+	return forward(conn, target)
 }
 
 func auth(conn io.ReadWriter) error {
@@ -85,13 +86,31 @@ func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
 	// Check if the command is supported
 	if msg.Command != CmdConnect {
 		// no supported
-		return nil, ErrCommandNotSupported
+		return nil, WriteReqFailureMsg(conn, ReplyCommandNotSupported)
 	}
 
 	// Check if the address type if supported
 	if msg.AddrType == IPv6Addr {
-		return nil, ErrAddrTypeNotSupported
+		return nil, WriteReqFailureMsg(conn, ReplyAddressTypeNotSupported)
 	}
 
-	return nil, nil
+	// access target tcp server
+	address := net.JoinHostPort(msg.Address, fmt.Sprintf("%d", msg.Port))
+	targetConn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, WriteReqFailureMsg(conn, ReplyConnectionRefused)
+	}
+
+	// Send success message
+	addrVal := targetConn.LocalAddr()
+	addr := addrVal.(*net.TCPAddr)
+	return targetConn, WriteReqSuccessMsg(conn, addr.IP, uint16(addr.Port))
+}
+
+func forward(server io.ReadWriter, target io.ReadWriteCloser) error {
+	defer target.Close()
+
+	go io.Copy(target, server)
+	_, err := io.Copy(server, target)
+	return err
 }

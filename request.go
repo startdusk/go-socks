@@ -129,7 +129,12 @@ func WriteReqSuccessMsg(conn io.Writer, ip net.IP, port uint16) error {
 	// Write bind port
 	buf := make([]byte, 2)
 	buf[0] = byte(port >> 8)
-	buf[1] = byte(port - uint16(buf[0]))
+	buf[1] = byte(port - uint16(buf[0])<<8)
 	_, err = conn.Write(buf)
+	return err
+}
+
+func WriteReqFailureMsg(conn io.Writer, reply Reply) error {
+	_, err := conn.Write([]byte{SOCKS5Version, reply, ReservedField, IPv4Addr, 0, 0, 0, 0, 0, 0})
 	return err
 }

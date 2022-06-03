@@ -8,7 +8,7 @@ import (
 
 // test
 // 运行该程序
-// 然后执行 curl --proxy socks5://localhost:18080 www.baidu.com
+// 然后执行 curl -v --proxy socks5://localhost:18080 www.baidu.com
 func main() {
 	srv := socks.Server{
 		IP:   "localhost",
