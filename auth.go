@@ -4,6 +4,37 @@ import (
 	"io"
 )
 
+type ClientAuthMsg struct {
+	Version  byte
+	NMethods byte
+	Methods  []Method
+}
+
+func (c ClientAuthMsg) ContainsMethod(method Method) bool {
+	for _, m := range c.Methods {
+		if m == method {
+			return true
+		}
+	}
+	return false
+}
+
+type ClientPasswordMsg struct {
+	Username string
+	Password string
+}
+
+type Method = byte
+
+const (
+	MethodNoAuth       Method = 0x00
+	MethodGSSAPI       Method = 0x01
+	MethodPassword     Method = 0x02
+	MethodNoAcceptable Method = 0xff
+)
+
+const PasswordMethodVersion = 0x01
+
 func NewClientAuthMsg(conn io.Reader) (*ClientAuthMsg, error) {
 	// Read Version and NMethods
 	buf := make([]byte, 2)
@@ -37,26 +68,36 @@ func NewServerAuthMsg(conn io.Writer, method Method) error {
 	return err
 }
 
-type ClientAuthMsg struct {
-	Version  byte
-	NMethods byte
-	Methods  []Method
-}
-
-func (c ClientAuthMsg) ContainsMethod(method Method) bool {
-	for _, m := range c.Methods {
-		if m == method {
-			return true
-		}
+func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
+	// Read version and username length
+	buf := make([]byte, 2)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return nil, err
 	}
-	return false
+
+	version, usernameLen := buf[0], buf[1]
+	if version != PasswordMethodVersion {
+		return nil, ErrMethodVersionNotSupported
+	}
+
+	// Read username, password length
+	buf = make([]byte, usernameLen+1)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return nil, err
+	}
+
+	username, passwordLen := string(buf[:len(buf)-1]), buf[len(buf)-1]
+
+	// Read password
+	if len(buf) < int(passwordLen) {
+		buf = make([]byte, passwordLen)
+	}
+	if _, err := io.ReadFull(conn, buf[:passwordLen]); err != nil {
+		return nil, err
+	}
+
+	return &ClientPasswordMsg{
+		Username: username,
+		Password: string(buf[:passwordLen]),
+	}, nil
 }
-
-type Method = byte
-
-const (
-	MethodNoAuth       Method = 0x00
-	MethodGSSAPI       Method = 0x01
-	MethodPassword     Method = 0x02
-	MethodNoAcceptable Method = 0xff
-)

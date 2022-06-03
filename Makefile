@@ -15,6 +15,7 @@ fuzz: vet
 	@go test -fuzz=FuzzNewServerAuthMsg -fuzztime 30s
 	@go test -fuzz=FuzzWriteReqSuccessMsg -fuzztime 30s
 	@go test -fuzz=FuzzAuth -fuzztime 30s
+	@go test -fuzz=FuzzRequest -fuzztime 30s
 
 run: test
 	@go run ./cmd/socks/main.go

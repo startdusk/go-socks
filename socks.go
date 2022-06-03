@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -89,14 +90,14 @@ func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
 		return nil, WriteReqFailureMsg(conn, ReplyCommandNotSupported)
 	}
 
-	// Check if the address type if supported
+	// Check if the address type is supported
 	if msg.AddrType == IPv6Addr {
 		return nil, WriteReqFailureMsg(conn, ReplyAddressTypeNotSupported)
 	}
 
-	// access target tcp server
+	// Access target tcp server
 	address := net.JoinHostPort(msg.Address, fmt.Sprintf("%d", msg.Port))
-	targetConn, err := net.Dial("tcp", address)
+	targetConn, err := net.DialTimeout("tcp", address, 5*time.Second)
 	if err != nil {
 		return nil, WriteReqFailureMsg(conn, ReplyConnectionRefused)
 	}
