@@ -71,9 +71,70 @@ func TestNewServerAuthMsg(t *testing.T) {
 			if !c.wantErr && err != nil {
 				t.Fatalf("expected want nil but got error: %+v", err)
 			}
+			if c.wantErr {
+				return
+			}
+
 			got := buf.Bytes()
 			if !reflect.DeepEqual(got, c.expect) {
 				t.Fatalf("expected Methods %v but got %v", c.expect, got)
+			}
+		})
+	}
+}
+
+func TestNewClientPasswordMsg(t *testing.T) {
+	cases := []struct {
+		name      string
+		version   byte
+		expectMsg ClientPasswordMsg
+		wantErr   bool
+	}{
+		{
+			name:    "normal_success",
+			version: PasswordMethodVersion,
+			expectMsg: ClientPasswordMsg{
+				Username: "admin",
+				Password: "123456",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "normal_success",
+			version: PasswordMethodVersion,
+			expectMsg: ClientPasswordMsg{
+				Username: "admin",
+				Password: "中文123456",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			buf.WriteByte(c.version)
+			buf.WriteByte(byte(len(c.expectMsg.Username)))
+			buf.WriteString(c.expectMsg.Username)
+			buf.WriteByte(byte(len(c.expectMsg.Password)))
+			buf.WriteString(c.expectMsg.Password)
+			msg, err := NewClientPasswordMsg(&buf)
+			if c.wantErr && err == nil {
+				t.Fatalf("expected want error but got nil")
+			}
+			if !c.wantErr && err != nil {
+				t.Fatalf("expected want nil but got error: %+v", err)
+			}
+
+			if c.wantErr {
+				return
+			}
+
+			if msg.Username != c.expectMsg.Username {
+				t.Fatalf("expected username %v but got %v", c.expectMsg.Username, msg.Username)
+			}
+			if msg.Password != c.expectMsg.Password {
+				t.Fatalf("expected password %v but got %v", c.expectMsg.Password, msg.Password)
 			}
 		})
 	}

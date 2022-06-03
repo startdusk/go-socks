@@ -1,7 +1,6 @@
 package socks
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -101,8 +100,8 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 
 	// UNAME 1 to 255
 	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
-	if usernameLen < 1 {
-		return nil, fmt.Errorf("UNAME length[%d] invalid", usernameLen)
+	if usernameLen == 0 {
+		return nil, ErrUsernameLengthZero
 	}
 
 	// Read username
@@ -110,19 +109,19 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return nil, err
 	}
-	username := string(buf[:len(buf)-1])
+	username := string(buf[:])
 
 	// Read password
 	buf = make([]byte, 1)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return nil, err
 	}
-	passwordLen := buf[0]
 
 	// PASSWD 1 to 255
 	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
-	if passwordLen < 1 {
-		return nil, fmt.Errorf("PASSWD length[%d] invalid", passwordLen)
+	passwordLen := buf[0]
+	if passwordLen == 0 {
+		return nil, ErrPasswordLengthZero
 	}
 
 	// Read password
