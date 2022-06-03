@@ -14,6 +14,7 @@ fuzz: vet
 	@go test -fuzz=FuzzNewClientAuthMsg -fuzztime 30s
 	@go test -fuzz=FuzzNewServerAuthMsg -fuzztime 30s
 	@go test -fuzz=FuzzWriteReqSuccessMsg -fuzztime 30s
+	@go test -fuzz=FuzzNewClientPasswordMsg -fuzztime 30s
 	@go test -fuzz=FuzzAuth -fuzztime 30s
 	@go test -fuzz=FuzzRequest -fuzztime 30s
 

@@ -1,6 +1,7 @@
 package socks
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -35,6 +36,14 @@ const (
 
 const PasswordMethodVersion = 0x01
 
+// The client connects to the server, and sends a version
+// identifier/method selection message:
+//
+//         +----+----------+----------+
+//         |VER | NMETHODS | METHODS  |
+//         +----+----------+----------+
+//         | 1  |    1     | 1 to 255 |
+//         +----+----------+----------+
 func NewClientAuthMsg(conn io.Reader) (*ClientAuthMsg, error) {
 	// Read Version and NMethods
 	buf := make([]byte, 2)
@@ -68,6 +77,16 @@ func NewServerAuthMsg(conn io.Writer, method Method) error {
 	return err
 }
 
+// Once the SOCKS V5 server has started, and the client has selected the
+// Username/Password Authentication protocol, the Username/Password
+// subnegotiation begins.  This begins with the client producing a
+// Username/Password request:
+//
+//         +----+------+----------+------+----------+
+//         |VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+//         +----+------+----------+------+----------+
+//         | 1  |  1   | 1 to 255 |  1   | 1 to 255 |
+//         +----+------+----------+------+----------+
 func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 	// Read version and username length
 	buf := make([]byte, 2)
@@ -80,13 +99,31 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 		return nil, ErrMethodVersionNotSupported
 	}
 
-	// Read username, password length
-	buf = make([]byte, usernameLen+1)
+	// UNAME 1 to 255
+	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
+	if usernameLen < 1 {
+		return nil, fmt.Errorf("UNAME length[%d] invalid", usernameLen)
+	}
+
+	// Read username
+	buf = make([]byte, usernameLen)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return nil, err
 	}
+	username := string(buf[:len(buf)-1])
 
-	username, passwordLen := string(buf[:len(buf)-1]), buf[len(buf)-1]
+	// Read password
+	buf = make([]byte, 1)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return nil, err
+	}
+	passwordLen := buf[0]
+
+	// PASSWD 1 to 255
+	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
+	if passwordLen < 1 {
+		return nil, fmt.Errorf("PASSWD length[%d] invalid", passwordLen)
+	}
 
 	// Read password
 	if len(buf) < int(passwordLen) {
