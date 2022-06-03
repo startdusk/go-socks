@@ -33,7 +33,11 @@ const (
 	MethodNoAcceptable Method = 0xff
 )
 
-const PasswordMethodVersion = 0x01
+const (
+	PasswordMethodVersion = 0x01
+	PasswordAuthSuccess   = 0x00
+	PasswordAuthFailure   = 0x01
+)
 
 // The client connects to the server, and sends a version
 // identifier/method selection message:
@@ -57,7 +61,13 @@ func NewClientAuthMsg(conn io.Reader) (*ClientAuthMsg, error) {
 	}
 
 	// Read Methods
+	//
+	// METHODS 1 to 255
+	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
 	nmethods := buf[1]
+	if nmethods == 0 {
+		return nil, ErrMethodsLengthZero
+	}
 	buf = make([]byte, nmethods)
 	_, err = io.ReadFull(conn, buf)
 	if err != nil {
@@ -136,4 +146,9 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 		Username: username,
 		Password: string(buf[:passwordLen]),
 	}, nil
+}
+
+func WriteSrvPasswordMsg(conn io.Writer, status byte) error {
+	_, err := conn.Write([]byte{PasswordMethodVersion, status})
+	return err
 }

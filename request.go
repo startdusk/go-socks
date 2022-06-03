@@ -48,6 +48,19 @@ const (
 	ReplyAddressTypeNotSupported
 )
 
+// Once the method-dependent subnegotiation has completed, the client
+// sends the request details.  If the negotiated method includes
+// encapsulation for purposes of integrity checking and/or
+// confidentiality, these requests MUST be encapsulated in the method-
+// dependent encapsulation.
+//
+// The SOCKS request is formed as follows:
+//
+//      +----+-----+-------+------+----------+----------+
+//      |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+//      +----+-----+-------+------+----------+----------+
+//      | 1  |  1  | X'00' |  1   | Variable |    2     |
+//      +----+-----+-------+------+----------+----------+
 func NewClientRequestMsg(conn io.Reader) (*ClientRequestMsg, error) {
 	// Read version, command, reserved, address type
 	buf := make([]byte, 4)

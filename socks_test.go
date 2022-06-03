@@ -54,7 +54,7 @@ func TestAuth(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			buf := bytes.NewBuffer(c.data)
-			err := auth(buf)
+			err := auth(buf, &Config{})
 			if c.wantErr && err == nil {
 				t.Fatalf("expected want error but got nil")
 			}
@@ -73,10 +73,15 @@ func TestAuth(t *testing.T) {
 }
 
 func FuzzAuth(f *testing.F) {
-	f.Add([]byte{})
+	f.Add([]byte{}, byte(0), false)
 
-	f.Fuzz(func(t *testing.T, data []byte) {
-		auth(bytes.NewBuffer(data))
+	f.Fuzz(func(t *testing.T, data []byte, method byte, res bool) {
+		auth(bytes.NewBuffer(data), &Config{
+			AuthMethod: method,
+			PasswordChecker: func(username string, password string) bool {
+				return res
+			},
+		})
 	})
 }
 

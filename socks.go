@@ -1,7 +1,6 @@
 package socks
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -19,11 +18,27 @@ type Socks interface {
 }
 
 type Server struct {
-	IP   string
-	Port string
+	IP     string
+	Port   string
+	Config *Config
+}
+
+type Config struct {
+	AuthMethod      Method
+	PasswordChecker func(username, password string) bool
+}
+
+func (s *Server) initConf() error {
+	if s.Config.AuthMethod == MethodPassword && s.Config.PasswordChecker == nil {
+		return ErrPasswordCheckerNotSet
+	}
+	return nil
 }
 
 func (s *Server) Run() error {
+	if err := s.initConf(); err != nil {
+		return err
+	}
 	addr := net.JoinHostPort(s.IP, s.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -39,7 +54,7 @@ func (s *Server) Run() error {
 
 		go func() {
 			defer conn.Close()
-			err := handleConn(conn)
+			err := handleConn(conn, s.Config)
 			if err != nil {
 				log.Printf("handle connection failure from [%s]: %+v", conn.RemoteAddr(), err)
 			}
@@ -47,9 +62,9 @@ func (s *Server) Run() error {
 	}
 }
 
-func handleConn(conn net.Conn) error {
+func handleConn(conn net.Conn, conf *Config) error {
 	// auth
-	if err := auth(conn); err != nil {
+	if err := auth(conn, conf); err != nil {
 		return err
 	}
 
@@ -63,19 +78,42 @@ func handleConn(conn net.Conn) error {
 	return forward(conn, target)
 }
 
-func auth(conn io.ReadWriter) error {
+func auth(conn io.ReadWriter, conf *Config) error {
+	// Read client auth message
 	msg, err := NewClientAuthMsg(conn)
 	if err != nil {
 		return err
 	}
 
-	// Only support no-auth
-	if !msg.ContainsMethod(MethodNoAuth) {
+	// Check if the auth method is supported
+	if !msg.ContainsMethod(conf.AuthMethod) {
 		NewServerAuthMsg(conn, MethodNoAcceptable)
-		return errors.New("method not supported")
+		return fmt.Errorf("method %v not supported", conf.AuthMethod)
 	}
 
-	return NewServerAuthMsg(conn, MethodNoAuth)
+	err = NewServerAuthMsg(conn, conf.AuthMethod)
+	if err != nil {
+		return err
+	}
+
+	switch conf.AuthMethod {
+	case MethodPassword:
+		msg, err := NewClientPasswordMsg(conn)
+		if err != nil {
+			return err
+		}
+		if !conf.PasswordChecker(msg.Username, msg.Password) {
+			WriteSrvPasswordMsg(conn, PasswordAuthFailure)
+			return ErrPasswordAuthFailure
+		}
+		err = WriteSrvPasswordMsg(conn, PasswordAuthSuccess)
+		if err != nil {
+			return err
+		}
+	case MethodNoAuth:
+		break
+	}
+	return nil
 }
 
 func request(conn io.ReadWriter) (io.ReadWriteCloser, error) {
