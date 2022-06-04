@@ -99,7 +99,8 @@ func NewServerAuthMsg(conn io.Writer, method Method) error {
 func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 	// Read version and username length
 	buf := make([]byte, 2)
-	if _, err := io.ReadFull(conn, buf); err != nil {
+	_, err := io.ReadFull(conn, buf)
+	if err != nil {
 		return nil, err
 	}
 
@@ -114,22 +115,16 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 		return nil, ErrUsernameLengthZero
 	}
 
-	// Read username
-	buf = make([]byte, usernameLen)
-	if _, err := io.ReadFull(conn, buf); err != nil {
+	// Read username, password
+	buf = make([]byte, int(usernameLen)+1)
+	_, err = io.ReadFull(conn, buf)
+	if err != nil {
 		return nil, err
 	}
-	username := string(buf[:])
-
-	// Read password
-	buf = make([]byte, 1)
-	if _, err := io.ReadFull(conn, buf); err != nil {
-		return nil, err
-	}
+	username, passwordLen := string(buf[:len(buf)-1]), buf[len(buf)-1]
 
 	// PASSWD 1 to 255
 	// uint8 is the set of all unsigned 8-bit integers. Range: 0 through 255.
-	passwordLen := buf[0]
 	if passwordLen == 0 {
 		return nil, ErrPasswordLengthZero
 	}
@@ -138,7 +133,8 @@ func NewClientPasswordMsg(conn io.Reader) (*ClientPasswordMsg, error) {
 	if len(buf) < int(passwordLen) {
 		buf = make([]byte, passwordLen)
 	}
-	if _, err := io.ReadFull(conn, buf[:passwordLen]); err != nil {
+	_, err = io.ReadFull(conn, buf[:passwordLen])
+	if err != nil {
 		return nil, err
 	}
 
